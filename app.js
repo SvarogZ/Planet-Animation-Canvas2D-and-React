@@ -152,11 +152,11 @@ function drawPlanet(ctx, starX, starY, ellipse, ellipseAngle, rotation, planet, 
 	const dx = Math.cos(angle);
 	
 	// to turn elliptic orbits
-	dr = Math.sqrt(dx*dx+dy*dy);
+	const dr = Math.sqrt(dx*dx+dy*dy);
 	const modEclAngle = Math.acos(dx/dr);
 	const eclAngle = dy > 0 ? modEclAngle : -modEclAngle;
-	edx = dr * Math.cos(eclAngle + ellipseAngle);
-	edy = dr * Math.sin(eclAngle + ellipseAngle);
+	const edx = dr * Math.cos(eclAngle + ellipseAngle);
+	const edy = dr * Math.sin(eclAngle + ellipseAngle);
 	
 	// scaled coordinates
 	const sx = edx * orbit;
