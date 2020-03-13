@@ -33,32 +33,67 @@ const DATA_TO_SHOW = JSON.parse(`{
 						"orbit":40,
 						"radius":5,
 						"color":6923772,
-						"name":"Sol",
-						"owner":"Sol"
+						"name":"Planet-1"
 					},
 					{
 						"id":2,
 						"orbit":60,
 						"radius":10,
 						"color":3381555,
-						"name":"Sol",
-						"owner":"Sol"
+						"name":"Planet-2"
 					},
 					{
 						"id":3,
 						"orbit":120,
 						"radius":15,
 						"color":13382553,
-						"name":"Sol",
-						"owner":"Sol"
+						"name":"Planet-3"
 					},
 					{
 						"id":4,
 						"orbit":150,
 						"radius":3,
 						"color":16766720,
-						"name":"Sol",
-						"owner":"Sol"
+						"name":"Planet-4"
+					}
+				]
+			},
+			{
+				"id":2655,
+				"shownX":500,
+				"shownY":400,
+				"radius":100,
+				"color":16766720,
+				"brightness":100,
+				"name":"Sol",
+				"planets":[
+					{
+						"id":1,
+						"orbit":150,
+						"radius":20,
+						"color":6923772,
+						"name":"Mercury"
+					},
+					{
+						"id":2,
+						"orbit":200,
+						"radius":25,
+						"color":3381555,
+						"name":"Venus"
+					},
+					{
+						"id":3,
+						"orbit":260,
+						"radius":30,
+						"color":13382553,
+						"name":"Earth"
+					},
+					{
+						"id":4,
+						"orbit":400,
+						"radius":25,
+						"color":16766720,
+						"name":"Mars"
 					}
 				]
 			}
@@ -97,7 +132,7 @@ function arrangePlanets (planets, bReverse) {
 
 // to draw one planet
 function drawPlanet(ctx, starX, starY, ellipse, ellipseAngle, rotation, planet, timestamp, bInFrontOf) {
-	const { id,orbit,radius,color,name,owner } = planet;
+	const { id,orbit,radius,color,name } = planet;
 	
 	// get planet initial position and speed from timestamp and orbit as a seed
 	const angle = (timestamp/orbit/orbit + orbit);
@@ -224,120 +259,146 @@ function drawStar(ctx, star, timestamp) {
 }
 
 
-// react class allows propramm to not redraw the canvas frame all the time
+// react class allows the code to not redraw the canvas frame all the time
 class PureCanvas extends React.Component {
-  shouldComponentUpdate() { return false; }
-  
-  render() {
-    /*return (
-      <canvas width="300" height="300" 
-        ref={node => node ? this.props.contextRef(node.getContext('2d')) : null}
-      />
-    )*/
+	static displayName = PureCanvas.name;
 	
-	return React.createElement("canvas", {
-		width: this.props.width,
-		height: this.props.height,
-		ref: node => node ? this.props.contextRef(node.getContext('2d')) : null
-		});
-  }
+	componentDidMount() {
+		const { width, height} = this.props;
+		this.width = width;
+		this.height = height;
+	}
+	
+	shouldComponentUpdate(nextProps) {
+		const { width, height } = nextProps;
+		if (width !== this.width || height !== this.height) {
+			this.width = width;
+			this.height = height;
+			return true;
+		}
+		return false;
+	}
+  
+	render() {
+		const { width, height, contextRef } = this.props;
+		
+		return React.createElement("canvas", {
+			width,
+			height,
+			ref: node => node ? contextRef(node.getContext('2d')) : null
+			});
+	}
 }
 
 // react canvas class
-class Canvas extends React.Component {
-  constructor(props) {
-    super(props);
-    this.saveContext = this.saveContext.bind(this);
-  }
-  
-  saveContext(ctx) {
-    this.ctx = ctx;
-  }
-  
-  componentDidUpdate() {
-    const ctx = this.ctx;
-	const {timestamp, timedelta, data} = this.props;
+class MapAnimation extends React.Component {
+	static displayName = MapAnimation.name;
 	
-	ctx.fillStyle = "#000";
-	ctx.fillRect(0, 0, 500, 500);
-	
-	data && data.stars && data.stars.forEach( star => {
-		drawStar(ctx, star, timestamp);
-	});
-  }
+	constructor(props) {
+		super(props);
+		this.saveContext = this.saveContext.bind(this);
+	}
   
-  render() {
-    //return <PureCanvas contextRef={this.saveContext}></PureCanvas>;
-	return React.createElement(PureCanvas, { 
-		contextRef: this.saveContext,
-		width: this.props.width,
-		height: this.props.height
+	saveContext(ctx) {
+		this.ctx = ctx;
+	}
+  
+	componentDidUpdate() {
+		const ctx = this.ctx;
+		const {data, width, height, animationData, startTime} = this.props;
+		
+		const fps = Math.round(1000/animationData.timedelta);
+		
+		ctx.fillStyle = "#000";
+		ctx.fillRect(0, 0, width, height);
+		ctx.font = "10px Arial";
+		ctx.fillStyle = "#fff";
+		ctx.fillText(`fps:${fps}`, 10, 10);
+	
+		data && data.stars && data.stars.forEach( star => {
+			drawStar(ctx, star, animationData.timestamp + startTime);
 		});
-  }
+	}
+  
+	render() {
+		return React.createElement(PureCanvas, { 
+			contextRef: this.saveContext,
+			width: this.props.width,
+			height: this.props.height
+		});
+	}
 }
 
-// react animation class to start and stop render
+// react animation class to start and stop render, class invokes custom class and passes "timestamp" and "timedelta"
 class Animation extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { 
-		timestamp: 0,
-		timedelta: 0
-	};
-    this.updateAnimationState = this.updateAnimationState.bind(this);
-  }
-  
-  componentDidMount() {
-    this.rAF = requestAnimationFrame(this.updateAnimationState);
-  }
-  
-  updateAnimationState(timestamp) {
-	this.setState(prevState => ({ 
-		timedelta: timestamp - prevState.timestamp,
-		timestamp
-		}));
-    this.rAF = requestAnimationFrame(this.updateAnimationState);
-  }
-  
-  componentWillUnmount() {
-    cancelAnimationFrame(this.rAF);
-  }
-  
-  render() {
-    const {timestamp, timedelta} = this.state;
-	const {width, height, data, startTime} = this.props;
+	static displayName = Animation.name;
 	
-	//return <Canvas angle={this.state.angle} />
-	return React.createElement(Canvas, { 
-	timestamp: timestamp + startTime,
-	timedelta: timedelta,
-	width: width,
-	height: height,
-	data: data
-	});
-  }
+	constructor(props) {
+		super(props);
+		this.state = { 
+			timestamp: 0,
+			timedelta: 0
+		};
+		this.updateAnimationState = this.updateAnimationState.bind(this);
+	}
+  
+	componentDidMount() {
+		this.rAF = requestAnimationFrame(this.updateAnimationState);
+	}
+  
+	updateAnimationState(timestamp) {
+		this.setState(prevState => ({ 
+			timedelta: timestamp - prevState.timestamp,
+			timestamp
+			}));
+		this.rAF = requestAnimationFrame(this.updateAnimationState);
+	}
+  
+	componentWillUnmount() {
+		cancelAnimationFrame(this.rAF);
+	}
+  
+	render() {
+		const {timestamp, timedelta} = this.state;
+	
+		const animationData = {
+				timestamp,
+				timedelta	
+			};
+	
+		return React.createElement("div", null, this.props.render(animationData) );
+	}
 }
-
 
 class App extends React.Component {
-  /*render() {
-    return <div>
-      <Animation></Animation>
-    </div>;
-  }*/
-  
-  render() {
-	return React.createElement("div",null,
-			React.createElement(Animation, {
-				data: DATA_TO_SHOW,
-				width: 400,
-				height: 400,
-				startTime: 5000
-				})
-		);
-  }
+	static displayName = App.name;
+	
+	constructor(props) {
+		super(props);
+
+		this.data = DATA_TO_SHOW;
+		this.startTime = 5000;
+		this.width = window.innerWidth
+			|| document.documentElement.clientWidth
+			|| document.body.clientWidth;
+		this.height = window.innerHeight
+			|| document.documentElement.clientHeight
+			|| document.body.clientHeight;
+	}
+	
+	render() {
+		const { data, width, height, startTime } = this;
+		
+		return React.createElement(Animation, {
+			render: animationData => React.createElement(MapAnimation, {
+				data,
+				width,
+				height,
+				startTime,
+				animationData,
+			})
+		})
+	}
 }
 
-
-//ReactDOM.render(<App />, document.getElementById('root'));
 ReactDOM.render(React.createElement(App), document.getElementById('root'));
